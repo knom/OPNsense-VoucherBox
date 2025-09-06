@@ -24,6 +24,7 @@ WORKDIR /app/backend/
 RUN npm install --frozen-lockfile 
 
 RUN npm run build
+RUN find . -name "*.js.map" -delete
 
 # -------------------------------
 # 2. Production stage
@@ -33,14 +34,9 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 
 # Copy only needed files
-COPY package*.json ./
-COPY frontend/package*.json ./dist/frontend/
 COPY backend/package*.json ./dist/backend/
 
-RUN npm install --omit=dev --frozen-lockfile
-
 WORKDIR /app/dist/frontend/
-RUN npm install --omit=dev --frozen-lockfile
 
 WORKDIR /app/dist/backend/
 RUN npm install --omit=dev --frozen-lockfile
@@ -50,10 +46,11 @@ WORKDIR /app/
 COPY --from=builder /app/backend/dist ./dist/backend
 COPY --from=builder /app/frontend/dist ./dist/frontend
 
+ADD backend/emailtemplate.txt .
+
 # Expose port (adjust if needed)
 EXPOSE 3000
 
 ENV BASEPATH=/wifi/
 
-# Run server (adjust entrypoint to your compiled backend)
 CMD ["node", "dist/backend/server.js"]
