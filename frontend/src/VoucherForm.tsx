@@ -42,7 +42,10 @@ export default function VoucherForm() {
     try {
       // validity in seconds, expirytime as Unix timestamp (seconds)
       const validitySeconds = validity * 60 * 60;
-      const expiryTimestamp = Math.floor(new Date(endDate).getTime() / 1000);
+
+      const nowMs = Date.now();
+      const endMs = new Date(endDate).getTime();
+      const expiryTimestamp = Math.floor((endMs - nowMs) / 1000);
 
       const res = await fetch('api/createvoucher', {
         method: 'POST',

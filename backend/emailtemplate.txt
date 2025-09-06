@@ -1,16 +1,47 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Your WiFi Voucher</title>
+    <style>
+        body { background: #f3f4f6; margin: 0; padding: 0; }
+    </style>
+</head>
 
 <body>
-    <p>Hello,</p>
-    <p>Your voucher details:</p>
-    <ul>
-        <li>Username: {{username}}</li>
-        <li>Password: {{password}}</li>
-        <li>Valid for: {{validity}} hours</li>
-        <li>Expiry date: {{expiryDate}}</li>
-        <li>Login Link: <a href="{{loginLink}}">{{loginLink}}</a></li>
-    </ul>
-    <p>Thank you.</p>
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f3f4f6;min-height:100vh;padding:0;margin:0;">
+            <tr>
+                <td align="center" style="padding:40px 0;">
+                    <table cellpadding="0" cellspacing="0" border="0" width="420" style="background:#fff;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,0.08);padding:0;">
+                        <tr>
+                            <td style="padding:32px 28px;font-family:Arial,sans-serif;">
+                                <h1 style="font-size:24px;color:#2563eb;margin:0 0 18px 0;font-weight:700;letter-spacing:-1px;">Your WiFi Voucher</h1>
+                                <p style="margin:0 0 8px 0;font-size:16px;">Hello,</p>
+                                <p style="margin:0 0 18px 0;font-size:16px;">Your voucher details:</p>
+                                <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:18px;">
+                                    <tr>
+                                        <td style="background:#f1f5f9;padding:10px 14px;border-radius:6px;font-size:16px;margin-bottom:10px;"><strong>Username:</strong> {{username}}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="background:#f1f5f9;padding:10px 14px;border-radius:6px;font-size:16px;margin-bottom:10px;"><strong>Password:</strong> {{password}}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="background:#f1f5f9;padding:10px 14px;border-radius:6px;font-size:16px;margin-bottom:10px;"><strong>Valid for:</strong> {{validity}} hours</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="background:#f1f5f9;padding:10px 14px;border-radius:6px;font-size:16px;margin-bottom:10px;"><strong>Expiry date:</strong> {{expiryDate}}</td>
+                                    </tr>
+                                </table>
+                                <a href="{{loginLink}}" style="display:inline-block;margin-top:18px;padding:12px 24px;background:#2563eb;color:#fff !important;text-decoration:none;border-radius:6px;font-weight:600;font-size:16px;box-shadow:0 2px 8px rgba(37,99,235,0.08);">Login to WiFi</a>
+                                <p style="margin-top:20px;font-size:15px;">Log into the WiFi and then press the login button above.</p>
+                                <div style="margin-top:28px;font-size:15px;color:#64748b;text-align:center;">Thank you for using our service.</div>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
 </body>
 
 </html>
