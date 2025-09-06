@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "target": "ES2020", // modern JS features
+    "module": "CommonJS", // for Node.js
+    "esModuleInterop": true, // allow default imports like 'import express from "express"'
+    "strict": true, // recommended
+    "outDir": "./dist/", // compiled JS output folder
+    "sourceMap": true
+  },
+  "include": [
+    "src/server.ts"
+  ] // your TS files
+}

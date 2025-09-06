@@ -1,0 +1,16 @@
+<html>
+
+<body>
+    <p>Hello,</p>
+    <p>Your voucher details:</p>
+    <ul>
+        <li>Username: {{username}}</li>
+        <li>Password: {{password}}</li>
+        <li>Valid for: {{validity}} hours</li>
+        <li>Expiry date: {{expiryDate}}</li>
+        <li>Login Link: <a href="{{loginLink}}">{{loginLink}}</a></li>
+    </ul>
+    <p>Thank you.</p>
+</body>
+
+</html>

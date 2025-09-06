@@ -1,0 +1,32 @@
+{
+  "name": "opnsense_vouchers_backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "tsc-watch --onSuccess 'node --inspect dist/server.js'",
+    "build": "eslint . && tsc --build",
+    "eslint": "eslint ."
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^17.2.2",
+    "express": "^5.1.0",
+    "handlebars": "^4.7.8",
+    "node-fetch": "^3.3.2",
+    "nodemailer": "^7.0.6",
+    "pino": "^9.9.2",
+    "undici": "^7.15.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node-fetch": "^2.6.13",
+    "@types/nodemailer": "^7.0.1",
+    "eslint": "^9.34.0",
+    "npm-check-updates": "^18.0.3",
+    "tsc-watch": "^7.1.1",
+    "typescript-eslint": "^8.42.0"
+  }
+}

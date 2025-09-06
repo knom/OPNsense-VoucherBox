@@ -1,0 +1,166 @@
+import express from 'express';
+import nodemailer from 'nodemailer';
+import handlebars from 'handlebars';
+import fs from 'fs';
+import dotenv from 'dotenv';
+import pino from 'pino';
+import { OpnsenseApi } from './OpnsenseApi';
+import { Voucher } from './Models';
+import { asyncHandler, requireBody } from './expressUtils';
+import path from 'path';
+
+dotenv.config({ quiet: true });
+
+export const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
+
+const app = express();
+app.use(express.json());
+
+const EMAIL_ADMIN = typeof process.env.EMAIL_ADMIN === 'string' ? process.env.EMAIL_ADMIN : (() => { throw new Error('EMAIL_ADMIN not set'); })();
+const EMAIL_SUBJECT = typeof process.env.EMAIL_SUBJECT === 'string' ? process.env.EMAIL_SUBJECT : 'Your Voucher Details';
+const SMTP_HOST = typeof process.env.SMTP_HOST === 'string' ? process.env.SMTP_HOST : (() => { throw new Error('SMTP_HOST not set'); })();
+const SMTP_PORT = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : (() => { throw new Error('SMTP_PORT not set'); })();
+const SMTP_USER = typeof process.env.SMTP_USER === 'string' ? process.env.SMTP_USER : (() => { throw new Error('SMTP_USER not set'); })();
+const SMTP_PASS = typeof process.env.SMTP_PASS === 'string' ? process.env.SMTP_PASS : (() => { throw new Error('SMTP_PASS not set'); })();
+const SMTP_FROM = typeof process.env.SMTP_FROM === 'string' ? process.env.SMTP_FROM : SMTP_USER;
+const SMTP_TLS = process.env.SMTP_TLS === 'true';
+const EMAIL_TEMPLATE_PATH = typeof process.env.EMAIL_TEMPLATE_PATH === 'string' ? process.env.EMAIL_TEMPLATE_PATH : "emailtemplate.txt";
+const HOSTNAME = typeof process.env.HOSTNAME === 'string' ? process.env.HOSTNAME : (() => { throw new Error('HOSTNAME not set'); })();
+const API_USERNAME = typeof process.env.API_USERNAME === 'string' ? process.env.API_USERNAME : (() => { throw new Error('API_USERNAME not set'); })();
+const API_PASSWORD = typeof process.env.API_PASSWORD === 'string' ? process.env.API_PASSWORD : (() => { throw new Error('API_PASSWORD not set'); })();
+const PROVIDER = typeof process.env.PROVIDER === 'string' ? process.env.PROVIDER : 'Voucher Server';
+const ALLOW_SELFSIGNED_HTTPS = process.env.ALLOW_SELFSIGNED_HTTPS_CERTS === 'true';
+const CAPTIVE_PORTAL_URL = typeof process.env.CAPTIVE_PORTAL_URL === 'string' ? process.env.CAPTIVE_PORTAL_URL : (() => { throw new Error('CAPTIVE_PORTAL_URL not set'); })();
+
+let emailTemplateSource = ""
+try {
+    emailTemplateSource = fs.readFileSync(EMAIL_TEMPLATE_PATH, 'utf8');
+    logger.debug({ path: EMAIL_TEMPLATE_PATH }, 'Email template loaded');
+} catch (e) {
+    logger.error({ err: e }, 'Failed to read email template file');
+    process.exit(1);
+}
+
+const template = handlebars.compile(emailTemplateSource);
+
+const BASEPATH = process.env.BASEPATH ? process.env.BASEPATH.replace(/\/$/, "") : "";
+
+if (BASEPATH)
+    logger.info(`Using base path: '${BASEPATH || "/"}'`);
+
+app.post(`${BASEPATH}/api/createvoucher`,
+    requireBody('email'),
+    asyncHandler(async (req, res) => {
+        const { email, validity = 14400, expirytime = Date.now() + 86400000 }
+            = req.body as { email: string; validity?: number; expirytime?: number };
+
+
+        const vouchergroup = new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14);
+        const api = new OpnsenseApi(
+            {
+                baseUrl: `https://${HOSTNAME}/api/`,
+                username: API_USERNAME,
+                password: API_PASSWORD,
+                allowSelfSigned: ALLOW_SELFSIGNED_HTTPS
+            });
+
+        try {
+            logger.info({ email, validity, expirytime, vouchergroup, PROVIDER }, 'Generating voucher');
+
+            const provider = encodeURIComponent(PROVIDER);
+
+            const response = await api.post(`captiveportal/voucher/generate_vouchers/${provider}/`, {
+                count: '1',
+                validity: String(validity),
+                expirytime: String(expirytime),
+                vouchergroup
+            });
+            const vouchers = await response.json() as Voucher[];
+            logger.debug({ vouchers }, 'Voucher API response');
+
+            if (!vouchers || vouchers.length === 0) {
+                logger.error('Voucher generation failed');
+                return res.status(500).json({ error: 'Voucher generation failed' });
+            }
+
+            const voucher = vouchers[0];
+
+            const vouchertmp = {
+                ...voucher,
+                expiryDate: new Date(Number(voucher.expirytime) * 1000).toLocaleString(),
+                validity: Number(voucher.validity) / 60 / 60,
+                loginLink: `${CAPTIVE_PORTAL_URL}/index.html?username=${voucher.username}&password=${voucher.password}&redirurl=www.msftconnecttest.com/redirect`
+            };
+
+            const html = template(vouchertmp);
+            logger.debug({ voucher, html }, 'Prepared email HTML');
+
+            const transporter = nodemailer.createTransport({
+                host: SMTP_HOST,
+                port: SMTP_PORT,
+                secure: SMTP_TLS,
+                auth: { user: SMTP_USER, pass: SMTP_PASS }
+            });
+
+            const mailOptions: nodemailer.SendMailOptions = {
+                from: SMTP_FROM,
+                to: [email].filter(Boolean).join(","),
+                bcc: EMAIL_ADMIN,
+                subject: EMAIL_SUBJECT,
+                html
+            };
+            await transporter.sendMail(mailOptions);
+
+            logger.info({ to: mailOptions.to }, 'Sent voucher email');
+
+            let groupnames: string[] = [];
+            try {
+                groupnames = await (await api.get('captiveportal/voucher/list_voucher_groups/Voucher%20Server/')).json() as string[];
+
+                if (!groupnames) {
+                    logger.warn('No voucher groups found');
+                }
+
+                logger.debug({ groupnames }, 'Fetched voucher groups');
+            } catch (e) {
+                logger.error({ err: e }, 'Failed to list voucher groups');
+            }
+
+            for (const groupname of groupnames) {
+                try {
+                    await api.post(`captiveportal/voucher/drop_expired_vouchers/Voucher%20Server/${encodeURIComponent(groupname)}/`);
+                    logger.info({ groupname }, 'Dropped expired vouchers');
+                } catch (e) {
+                    logger.warn({ groupname, err: e }, `Failed to drop expired vouchers for group ${groupname}`);
+                }
+            }
+
+            res.json({ success: true, voucher });
+            logger.info({ voucher }, 'Voucher created and email sent');
+        } catch (err: unknown) {
+            logger.error({ err }, 'Error in /api/createvoucher');
+            res.status(500).json({ error: (err as Error).message });
+        }
+    }));
+
+const env = (process.env.NODE_ENV ?? "development").toLowerCase();
+
+logger.info(`Running in ${env} mode`);
+
+// --- Serve frontend only in production ---
+if (env === "production") {
+    logger.info("Serving static HTML content...")
+
+    const frontendPath = path.join(__dirname, "../frontend/"); // vite default output
+    app.use(BASEPATH, express.static(frontendPath));
+
+    // any non react route or non api, send to index.html
+    app.get(`${BASEPATH}/*splat`, (_, res) => {
+        res.sendFile(path.join(frontendPath, "index.html"));
+    });
+}
+
+const PORT = Number(process.env.PORT) || 3000;
+app.listen(PORT, () => {
+    logger.info(`Server running on port ${PORT}`);
+});
