@@ -47,7 +47,7 @@ WORKDIR /app/
 COPY --from=builder /app/backend/dist ./dist/backend
 COPY --from=builder /app/frontend/dist ./dist/frontend
 
-ADD backend/emailtemplate.txt .
+ADD backend/emailtemplate.mjml .
 
 # Expose port (adjust if needed)
 EXPOSE 3000

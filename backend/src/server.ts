@@ -13,7 +13,31 @@ import QRCode from 'qrcode';
 
 dotenv.config({ quiet: true });
 
-export const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
+const emailRegex = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi;
+export const logger = pino({
+    level: process.env.LOG_LEVEL || 'info',
+    redact: {
+        paths: ['**'], // redact everywhere
+        censor: (value) => {
+            if (typeof value === 'string') {
+                return value.replace(emailRegex, '[REDACTED]');
+            }
+            return value;
+        }
+    },
+    transport: process.env.NODE_ENV !== "production"
+        ? {
+            target: "pino-pretty",
+            options: {
+                colorize: true,
+                translateTime: "SYS:standard",
+                ignore: "pid,hostname",
+            },
+        }
+        : undefined,
+});
+
+
 
 const app = express();
 app.use(express.json());
@@ -102,7 +126,7 @@ app.post(`${BASEPATH}/api/createvoucher`,
             });
 
         try {
-            logger.info({ email, validity, expirytime, vouchergroup, PROVIDER }, 'Generating voucher');
+            logger.debug({ email, validity, expirytime, vouchergroup, PROVIDER }, 'Generating voucher');
 
             // encode provider for usage in URLs
             const provider = encodeURIComponent(PROVIDER);
@@ -134,7 +158,7 @@ app.post(`${BASEPATH}/api/createvoucher`,
                 logger.warn({ err }, 'Failed to generate QR code');
             }
 
-            logger.info({ qrCodeDataUrl }, 'Generated QR code data URL');
+            logger.debug({ qrCodeDataUrl }, 'Generated QR code data URL');
 
             // Prepare voucher data for email template
             const vouchertmp = {
