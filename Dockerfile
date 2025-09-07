@@ -23,6 +23,7 @@ RUN npm install --frozen-lockfile
 WORKDIR /app/backend/
 RUN npm install --frozen-lockfile 
 
+WORKDIR /app/
 RUN npm run build
 RUN find . -name "*.js.map" -delete
 
