@@ -142,7 +142,7 @@ export default function VoucherForm() {
       )}
       {fetchError && (
         <div className="mt-6 text-red-600 font-bold text-center text-xl">
-          an error occurred...
+          An error occurred
         </div>
       )}
     </div>
