@@ -20,7 +20,7 @@ export const logger = pino({
         paths: ['*'], // redact everywhere
         censor: (value) => {
             if (typeof value === 'string') {
-                return value.replace(emailRegex, '[REDACTED]');
+                return value.replace(emailRegex, '***@redacted.at');
             }
             return value;
         }
