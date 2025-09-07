@@ -14,6 +14,7 @@ export default function VoucherForm() {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; validity?: string; endDate?: string }>({});
   const [fetchError, setFetchError] = useState(false);
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
 
   function validate() {
     const newErrors: typeof errors = {};
@@ -35,6 +36,7 @@ export default function VoucherForm() {
     e.preventDefault();
     setFetchSuccess(false);
     setFetchError(false);
+    setQrCodeDataUrl(null);
     const validationErrors = validate();
     setErrors(validationErrors);
     if (Object.keys(validationErrors).length > 0) return;
@@ -57,10 +59,14 @@ export default function VoucherForm() {
         }),
       });
       if (res.ok) {
+        const data = await res.json();
         setFetchSuccess(true);
         setEmail('');
         setValidity(defaultValidity);
         setEndDate(defaultEndDate.toISOString().slice(0, 16));
+        if (data.qrCodeDataUrl) {
+          setQrCodeDataUrl(data.qrCodeDataUrl);
+        }
       } else {
         setFetchError(true);
       }
@@ -122,9 +128,17 @@ export default function VoucherForm() {
         </button>
       </form>
       {fetchSuccess && (
-        <div className="mt-6 text-green-600 font-bold text-center text-xl">
-          New Voucher created
-        </div>
+        <>
+          <div className="mt-6 text-green-600 font-bold text-center text-xl">
+            New Voucher created
+          </div>
+          {qrCodeDataUrl && (
+            <div className="mt-4 flex flex-col items-center">
+              <img src={qrCodeDataUrl} alt="Voucher Login QR Code" className="w-40 h-40" />
+              <div className="text-xs text-gray-500 mt-2">Join the WIFI first and then scan to login</div>
+            </div>
+          )}
+        </>
       )}
       {fetchError && (
         <div className="mt-6 text-red-600 font-bold text-center text-xl">

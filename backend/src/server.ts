@@ -8,6 +8,7 @@ import { OpnsenseApi } from './OpnsenseApi';
 import { Voucher } from './Models';
 import { asyncHandler, requireBody } from './expressUtils';
 import path from 'path';
+import QRCode from 'qrcode';
 
 dotenv.config({ quiet: true });
 
@@ -85,11 +86,21 @@ app.post(`${BASEPATH}/api/createvoucher`,
 
             const voucher = vouchers[0];
 
+
+            const loginLink = `${CAPTIVE_PORTAL_URL}/index.html?username=${voucher.username}&password=${voucher.password}&redirurl=www.msftconnecttest.com/redirect`;
+            let qrCodeDataUrl = '';
+            try {
+                qrCodeDataUrl = await QRCode.toDataURL(loginLink);
+            } catch (err) {
+                logger.warn({ err }, 'Failed to generate QR code');
+            }
+
             const vouchertmp = {
                 ...voucher,
                 expiryDate: new Date(Number(voucher.expirytime) * 1000).toLocaleString(),
                 validity: Number(voucher.validity) / 60 / 60,
-                loginLink: `${CAPTIVE_PORTAL_URL}/index.html?username=${voucher.username}&password=${voucher.password}&redirurl=www.msftconnecttest.com/redirect`
+                loginLink,
+                qrCodeDataUrl
             };
 
             const html = template(vouchertmp);
@@ -135,7 +146,7 @@ app.post(`${BASEPATH}/api/createvoucher`,
                 }
             }
 
-            res.json({ success: true, voucher });
+            res.json({ success: true, voucher, qrCodeDataUrl });
             logger.info({ voucher }, 'Voucher created and email sent');
         } catch (err: unknown) {
             logger.error({ err }, 'Error in /api/createvoucher');
