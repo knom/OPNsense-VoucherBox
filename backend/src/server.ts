@@ -16,15 +16,15 @@ dotenv.config({ quiet: true });
 const emailRegex = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi;
 export const logger = pino({
     level: process.env.LOG_LEVEL || 'info',
-    redact: {
-        paths: ['**'], // redact everywhere
+    redact: process.env.NODE_ENV === "production" ? {
+        paths: ['*'], // redact everywhere
         censor: (value) => {
             if (typeof value === 'string') {
                 return value.replace(emailRegex, '[REDACTED]');
             }
             return value;
         }
-    },
+    } : undefined,
     transport: process.env.NODE_ENV !== "production"
         ? {
             target: "pino-pretty",
@@ -102,7 +102,7 @@ async function cleanupVoucherGroups(api: OpnsenseApi, provider: string): Promise
     for (const groupname of groupnames) {
         try {
             await api.post(`captiveportal/voucher/drop_expired_vouchers/${provider}/${encodeURIComponent(groupname)}/`);
-            logger.info({ groupname }, 'Dropped expired vouchers');
+            logger.debug({ groupname }, 'Dropped expired vouchers');
         } catch (e) {
             logger.warn({ groupname, err: e }, `Failed to drop expired vouchers for group ${groupname}`);
         }
@@ -194,13 +194,13 @@ app.post(`${BASEPATH}/api/createvoucher`,
             };
             await transporter.sendMail(mailOptions);
 
-            logger.info({ to: mailOptions.to }, 'Sent voucher email');
+            logger.debug({ to: mailOptions.to }, 'Sent voucher email');
 
             // Clean up old voucher groups
             await cleanupVoucherGroups(api, provider);
 
             res.json({ success: true, voucher, qrCodeDataUrl });
-            logger.info({ voucher }, 'Voucher created and email sent');
+            logger.info({ voucher, to: mailOptions.to }, 'Voucher created and email sent');
         } catch (err: unknown) {
             logger.error({ err }, 'Error in /api/createvoucher');
             res.status(500).json({ error: (err as Error).message });
