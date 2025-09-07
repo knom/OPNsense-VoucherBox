@@ -1,6 +1,7 @@
 import express from 'express';
 import nodemailer from 'nodemailer';
 import handlebars from 'handlebars';
+import mjml2html from 'mjml';
 import fs from 'fs';
 import dotenv from 'dotenv';
 import pino from 'pino';
@@ -25,7 +26,7 @@ const SMTP_USER = typeof process.env.SMTP_USER === 'string' ? process.env.SMTP_U
 const SMTP_PASS = typeof process.env.SMTP_PASS === 'string' ? process.env.SMTP_PASS : (() => { throw new Error('SMTP_PASS not set'); })();
 const SMTP_FROM = typeof process.env.SMTP_FROM === 'string' ? process.env.SMTP_FROM : SMTP_USER;
 const SMTP_TLS = process.env.SMTP_TLS === 'true';
-const EMAIL_TEMPLATE_PATH = typeof process.env.EMAIL_TEMPLATE_PATH === 'string' ? process.env.EMAIL_TEMPLATE_PATH : "emailtemplate.txt";
+const EMAIL_TEMPLATE_PATH = typeof process.env.EMAIL_TEMPLATE_PATH === 'string' ? process.env.EMAIL_TEMPLATE_PATH : "emailtemplate.mjml";
 const HOSTNAME = typeof process.env.HOSTNAME === 'string' ? process.env.HOSTNAME : (() => { throw new Error('HOSTNAME not set'); })();
 const API_USERNAME = typeof process.env.API_USERNAME === 'string' ? process.env.API_USERNAME : (() => { throw new Error('API_USERNAME not set'); })();
 const API_PASSWORD = typeof process.env.API_PASSWORD === 'string' ? process.env.API_PASSWORD : (() => { throw new Error('API_PASSWORD not set'); })();
@@ -33,21 +34,56 @@ const PROVIDER = typeof process.env.PROVIDER === 'string' ? process.env.PROVIDER
 const ALLOW_SELFSIGNED_HTTPS = process.env.ALLOW_SELFSIGNED_HTTPS_CERTS === 'true';
 const CAPTIVE_PORTAL_URL = typeof process.env.CAPTIVE_PORTAL_URL === 'string' ? process.env.CAPTIVE_PORTAL_URL : (() => { throw new Error('CAPTIVE_PORTAL_URL not set'); })();
 
-let emailTemplateSource = ""
-try {
-    emailTemplateSource = fs.readFileSync(EMAIL_TEMPLATE_PATH, 'utf8');
-    logger.debug({ path: EMAIL_TEMPLATE_PATH }, 'Email template loaded');
-} catch (e) {
-    logger.error({ err: e }, 'Failed to read email template file');
-    process.exit(1);
-}
 
-const template = handlebars.compile(emailTemplateSource);
 
 const BASEPATH = process.env.BASEPATH ? process.env.BASEPATH.replace(/\/$/, "") : "";
 
 if (BASEPATH)
     logger.info(`Using base path: '${BASEPATH || "/"}'`);
+
+// Helper to compile MJML template and generate HTML
+function compileVoucherEmail(vouchertmp: unknown): { html: string; error?: string } {
+    let mjmlSource = '';
+    try {
+        mjmlSource = fs.readFileSync(EMAIL_TEMPLATE_PATH, 'utf8');
+    } catch {
+        return { html: '', error: 'Failed to read MJML template file' };
+    }
+    let mjmlCompiled = '';
+    try {
+        mjmlCompiled = handlebars.compile(mjmlSource)(vouchertmp);
+    } catch {
+        return { html: '', error: 'Failed to compile MJML template with variables' };
+    }
+    const { html, errors } = mjml2html(mjmlCompiled);
+    if (errors && errors.length > 0) {
+        return { html: '', error: 'MJML compilation error: ' + JSON.stringify(errors) };
+    }
+    return { html };
+}
+
+// Helper to clean up voucher groups
+async function cleanupVoucherGroups(api: OpnsenseApi, provider: string): Promise<void> {
+    let groupnames: string[] = [];
+    try {
+        groupnames = await (await api.get('captiveportal/voucher/list_voucher_groups/Voucher%20Server/')).json() as string[];
+        if (!groupnames) {
+            logger.warn('No voucher groups found');
+        }
+        logger.debug({ groupnames }, 'Fetched voucher groups');
+    } catch (e) {
+        logger.error({ err: e }, 'Failed to list voucher groups');
+        return;
+    }
+    for (const groupname of groupnames) {
+        try {
+            await api.post(`captiveportal/voucher/drop_expired_vouchers/${provider}/${encodeURIComponent(groupname)}/`);
+            logger.info({ groupname }, 'Dropped expired vouchers');
+        } catch (e) {
+            logger.warn({ groupname, err: e }, `Failed to drop expired vouchers for group ${groupname}`);
+        }
+    }
+}
 
 app.post(`${BASEPATH}/api/createvoucher`,
     requireBody('email'),
@@ -68,8 +104,10 @@ app.post(`${BASEPATH}/api/createvoucher`,
         try {
             logger.info({ email, validity, expirytime, vouchergroup, PROVIDER }, 'Generating voucher');
 
+            // encode provider for usage in URLs
             const provider = encodeURIComponent(PROVIDER);
 
+            // Create voucher through opnsense API
             const response = await api.post(`captiveportal/voucher/generate_vouchers/${provider}/`, {
                 count: '1',
                 validity: String(validity),
@@ -79,6 +117,7 @@ app.post(`${BASEPATH}/api/createvoucher`,
             const vouchers = await response.json() as Voucher[];
             logger.debug({ vouchers }, 'Voucher API response');
 
+            // Check if voucher was created
             if (!vouchers || vouchers.length === 0) {
                 logger.error('Voucher generation failed');
                 return res.status(500).json({ error: 'Voucher generation failed' });
@@ -86,7 +125,7 @@ app.post(`${BASEPATH}/api/createvoucher`,
 
             const voucher = vouchers[0];
 
-
+            // Generate login link and QR code
             const loginLink = `${CAPTIVE_PORTAL_URL}/index.html?username=${voucher.username}&password=${voucher.password}&redirurl=www.msftconnecttest.com/redirect`;
             let qrCodeDataUrl = '';
             try {
@@ -95,6 +134,9 @@ app.post(`${BASEPATH}/api/createvoucher`,
                 logger.warn({ err }, 'Failed to generate QR code');
             }
 
+            logger.info({ qrCodeDataUrl }, 'Generated QR code data URL');
+
+            // Prepare voucher data for email template
             const vouchertmp = {
                 ...voucher,
                 expiryDate: new Date(Number(voucher.expirytime) * 1000).toLocaleString(),
@@ -103,9 +145,15 @@ app.post(`${BASEPATH}/api/createvoucher`,
                 qrCodeDataUrl
             };
 
-            const html = template(vouchertmp);
+            // Compile MJML template and generate HTML
+            const { html, error } = compileVoucherEmail(vouchertmp);
+            if (error) {
+                logger.error({ error }, 'MJML compilation or template error');
+                return res.status(500).json({ error: error });
+            }
             logger.debug({ voucher, html }, 'Prepared email HTML');
 
+            // Send email with voucher details
             const transporter = nodemailer.createTransport({
                 host: SMTP_HOST,
                 port: SMTP_PORT,
@@ -124,27 +172,8 @@ app.post(`${BASEPATH}/api/createvoucher`,
 
             logger.info({ to: mailOptions.to }, 'Sent voucher email');
 
-            let groupnames: string[] = [];
-            try {
-                groupnames = await (await api.get('captiveportal/voucher/list_voucher_groups/Voucher%20Server/')).json() as string[];
-
-                if (!groupnames) {
-                    logger.warn('No voucher groups found');
-                }
-
-                logger.debug({ groupnames }, 'Fetched voucher groups');
-            } catch (e) {
-                logger.error({ err: e }, 'Failed to list voucher groups');
-            }
-
-            for (const groupname of groupnames) {
-                try {
-                    await api.post(`captiveportal/voucher/drop_expired_vouchers/Voucher%20Server/${encodeURIComponent(groupname)}/`);
-                    logger.info({ groupname }, 'Dropped expired vouchers');
-                } catch (e) {
-                    logger.warn({ groupname, err: e }, `Failed to drop expired vouchers for group ${groupname}`);
-                }
-            }
+            // Clean up old voucher groups
+            await cleanupVoucherGroups(api, provider);
 
             res.json({ success: true, voucher, qrCodeDataUrl });
             logger.info({ voucher }, 'Voucher created and email sent');

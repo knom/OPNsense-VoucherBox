@@ -1,0 +1,48 @@
+<mjml>
+  <mj-body background-color="#f3f4f6">
+    <mj-section>
+      <mj-column background-color="#fff" border-radius="12px" padding="32px 28px">
+        <mj-text font-size="24px" color="#2563eb" font-weight="700" letter-spacing="-1px" align="left" padding-bottom="18px">
+          Your WiFi Voucher
+        </mj-text>
+        <mj-text font-size="16px" padding-bottom="8px">Hello,</mj-text>
+        <mj-text font-size="16px" padding-bottom="18px">Your voucher details:</mj-text>
+        <mj-table>
+          <tr>
+            <td style="background:#f1f5f9;padding:10px 14px;border-radius:6px;font-size:16px;">
+              <strong>Username:</strong> {{username}}
+            </td>
+          </tr>
+          <tr>
+            <td style="background:#f1f5f9;padding:10px 14px;border-radius:6px;font-size:16px;">
+              <strong>Password:</strong> {{password}}
+            </td>
+          </tr>
+          <tr>
+            <td style="background:#f1f5f9;padding:10px 14px;border-radius:6px;font-size:16px;">
+              <strong>Valid for:</strong> {{validity}} hours
+            </td>
+          </tr>
+          <tr>
+            <td style="background:#f1f5f9;padding:10px 14px;border-radius:6px;font-size:16px;">
+              <strong>Expiry date:</strong> {{expiryDate}}
+            </td>
+          </tr>
+        </mj-table>
+        <mj-image src="{{qrCodeDataUrl}}" alt="QR Code" padding-top="18px" height="100px" width="100px" />
+        <mj-button background-color="#2563eb" color="#fff" border-radius="6px" font-size="16px" font-weight="600" href="{{loginLink}}" padding-top="18px">
+          Login to WiFi
+        </mj-button>
+        <mj-text font-size="15px" padding-top="20px" align="center">
+          Log into the WiFi first.
+        </mj-text>
+        <mj-text font-size="15px" align="center">
+          Then press the login button above or scan QR Code.
+        </mj-text>
+        <mj-text font-size="15px" color="#64748b" align="center" padding-top="28px">
+          Thank you for using our service.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>
