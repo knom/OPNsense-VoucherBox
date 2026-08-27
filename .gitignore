@@ -1,3 +1,7 @@
+docker-compose.yml
+.env
+*.digest
+
 # Logs
 logs
 *.log
