@@ -24,12 +24,9 @@ Typical use cases include:
 * Offices and coworking spaces
 * Events and conferences
 * Restaurants and cafés
-* Schools and universities
-* Makerspaces and community networks
 * Temporary network access for visitors
 
 VoucherBox communicates with OPNsense through its API and can optionally deliver generated vouchers by email.
-
 > **Important:** VoucherBox is an administrative application. It should **not be exposed directly to the public Internet without additional authentication and access controls.**
 
 ---
