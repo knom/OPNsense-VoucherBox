@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="./logo.svg" alt="OPNsense VoucherBox" width="180">
+<img src="./logo_m.png" alt="OPNsense VoucherBox">
 
 # OPNsense VoucherBox
 
@@ -22,10 +22,11 @@ Typical use cases include:
 
 * Guest Wi-Fi at hotels and apartments
 * Offices and coworking spaces
+* Events and conferences
+* Restaurants and cafés
 * Temporary network access for visitors
 
 VoucherBox communicates with OPNsense through its API and can optionally deliver generated vouchers by email.
-
 > **Important:** VoucherBox is an administrative application. It should **not be exposed directly to the public Internet without additional authentication and access controls.**
 
 ---
@@ -88,11 +89,13 @@ OPNsense provides voucher authentication as part of its Captive Portal functiona
                        └─────────────┘
 ```
 
+VoucherBox should normally be placed behind a reverse proxy. The reverse proxy becomes the public entry point and can provide TLS termination, access restrictions, rate limiting, and authentication before traffic reaches VoucherBox.
+
 ---
 
 # 🔐 Security: Protect VoucherBox
 
-> ## ⚠️ Again: Do not expose VoucherBox directly to the Internet
+> ## ⚠️ Do not expose VoucherBox directly to the Internet
 
 VoucherBox should be placed behind an authentication-aware reverse proxy such as:
 
@@ -108,51 +111,6 @@ Using Auth servers such as:
 * **[Keycloak](https://www.keycloak.org/)** 
 
 For example, a reverse proxy can authenticate a user against Authentik, Authelia, or Keycloak before forwarding the request to VoucherBox.
-
----
-
----
-
-# 🚀 Quick Start
-
-Clone the repository:
-
-```bash
-git clone https://github.com/knom/Opnsense-Voucher-WebUI.git
-cd Opnsense-Voucher-WebUI
-```
-
-Create the environment file:
-
-```bash
-cp .env.example .env
-```
-
-Edit the configuration:
-
-```bash
-nano .env
-```
-
-Start VoucherBox:
-
-```bash
-docker compose up -d --build
-```
-
-Check the logs:
-
-```bash
-docker compose logs -f
-```
-
-The default Docker Compose configuration exposes the application on port `3030`.
-
-Open:
-
-```text
-http://<server>:3030/wifi/
-```
 
 ---
 
@@ -237,6 +195,53 @@ API_USERNAME = OPNsense API key
 API_PASSWORD = OPNsense API secret
 HOSTNAME     = OPNsense hostname
 ```
+
+---
+
+# 🚀 Quick Start
+
+Clone the repository:
+
+```bash
+git clone https://github.com/knom/Opnsense-Voucher-WebUI.git
+cd Opnsense-Voucher-WebUI
+```
+
+Create the environment file:
+
+```bash
+cp .env.example .env
+```
+
+Edit the configuration:
+
+```bash
+nano .env
+```
+
+Start VoucherBox:
+
+```bash
+docker compose up -d --build
+```
+
+Check the logs:
+
+```bash
+docker compose logs -f
+```
+
+The default Docker Compose configuration exposes the application on port `3030`.
+
+Open:
+
+```text
+http://<server>:3030/wifi/
+```
+
+For production, expose the application through HTTPS via a reverse proxy instead of directly publishing this port to an untrusted network.
+
+---
 
 # ⚙️ Configuration
 
