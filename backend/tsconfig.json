@@ -5,6 +5,7 @@
     "esModuleInterop": true, // allow default imports like 'import express from "express"'
     "strict": true, // recommended
     "outDir": "./dist/", // compiled JS output folder
+    "rootDir": "./src/",
     "sourceMap": true
   },
   "include": [

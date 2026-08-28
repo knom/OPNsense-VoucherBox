@@ -66,7 +66,7 @@ if (BASEPATH)
     logger.info(`Using base path: '${BASEPATH || "/"}'`);
 
 // Helper to compile MJML template and generate HTML
-function compileVoucherEmail(vouchertmp: unknown): { html: string; error?: string } {
+async function compileVoucherEmail(vouchertmp: unknown): Promise<{ html: string; error?: string }> {
     let mjmlSource = '';
     try {
         mjmlSource = fs.readFileSync(EMAIL_TEMPLATE_PATH, 'utf8');
@@ -79,7 +79,7 @@ function compileVoucherEmail(vouchertmp: unknown): { html: string; error?: strin
     } catch {
         return { html: '', error: 'Failed to compile MJML template with variables' };
     }
-    const { html, errors } = mjml2html(mjmlCompiled);
+    const { html, errors } = await mjml2html(mjmlCompiled);
     if (errors && errors.length > 0) {
         return { html: '', error: 'MJML compilation error: ' + JSON.stringify(errors) };
     }
@@ -170,7 +170,7 @@ app.post(`${BASEPATH}/api/createvoucher`,
             };
 
             // Compile MJML template and generate HTML
-            const { html, error } = compileVoucherEmail(vouchertmp);
+            const { html, error } = await compileVoucherEmail(vouchertmp);
             if (error) {
                 logger.error({ error }, 'MJML compilation or template error');
                 return res.status(500).json({ error: error });
