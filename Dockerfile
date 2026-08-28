@@ -1,7 +1,7 @@
 # -------------------------------
 # 1. Build stage
 # -------------------------------
-FROM node:20-alpine AS builder
+FROM node:26-alpine AS builder
 
 ENV BASEPATH=/wifi/
 
@@ -30,7 +30,7 @@ RUN find . -name "*.js.map" -delete
 # -------------------------------
 # 2. Production stage
 # -------------------------------
-FROM node:20-alpine AS runner
+FROM node:26-alpine AS runner
 
 WORKDIR /app
 
@@ -53,5 +53,8 @@ ADD backend/emailtemplate.mjml .
 EXPOSE 3000
 
 ENV BASEPATH=/wifi/
+
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 --start-period=20s \
+  CMD wget --spider -q http://localhost:3000/wifi/ || exit 1
 
 CMD ["node", "dist/backend/server.js"]

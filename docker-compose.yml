@@ -1,24 +1,15 @@
 services:
   opnsense_vouchers:
+    container_name: opnsense_vouchers
     build:
       context: .
       dockerfile: Dockerfile
     image: knom/opnsense_vouchers
-    # ports:
-    #   - "3031:3000"
+    ports:
+       - "3030:3000"
     env_file:
       - .env
     environment:
       - NODE_ENV=production
       - BASEPATH=/wifi/
-      # - PUID=1000                           # Replace with the user ID (optional)
-      # - PGID=1000                           # Replace with the group ID (optional)
-      - VIRTUAL_HOST=kleinerigel.local.knor.net
-      - VIRTUAL_PATH=/wifi/
-      - VIRTUAL_PORT=3000
     restart: always
-
-networks:
-  default:
-    name: shared_igel_net
-    external: true
