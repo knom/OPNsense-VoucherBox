@@ -1,6 +1,6 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
-import eslint from 'vite-plugin-eslint';
+import eslint from 'vite-plugin-eslint2';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig(({ mode }) => {
