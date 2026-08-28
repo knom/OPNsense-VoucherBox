@@ -67,13 +67,13 @@ if (BASEPATH)
 
 // Helper to compile MJML template and generate HTML
 async function compileVoucherEmail(vouchertmp: unknown): Promise<{ html: string; error?: string }> {
-    let mjmlSource = '';
+    let mjmlSource;
     try {
         mjmlSource = fs.readFileSync(EMAIL_TEMPLATE_PATH, 'utf8');
     } catch {
         return { html: '', error: 'Failed to read MJML template file' };
     }
-    let mjmlCompiled = '';
+    let mjmlCompiled;
     try {
         mjmlCompiled = handlebars.compile(mjmlSource)(vouchertmp);
     } catch {
@@ -88,7 +88,7 @@ async function compileVoucherEmail(vouchertmp: unknown): Promise<{ html: string;
 
 // Helper to clean up voucher groups
 async function cleanupVoucherGroups(api: OpnsenseApi, provider: string): Promise<void> {
-    let groupnames: string[] = [];
+    let groupnames: string[];
     try {
         groupnames = await (await api.get('captiveportal/voucher/list_voucher_groups/Voucher%20Server/')).json() as string[];
         if (!groupnames) {
