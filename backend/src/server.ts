@@ -1,5 +1,6 @@
 import express from 'express';
 import nodemailer from 'nodemailer';
+import type { SendMailOptions } from 'nodemailer';
 import handlebars from 'handlebars';
 import mjml2html from 'mjml';
 import fs from 'fs';
@@ -185,7 +186,7 @@ app.post(`${BASEPATH}/api/createvoucher`,
                 auth: { user: SMTP_USER, pass: SMTP_PASS }
             });
 
-            const mailOptions: nodemailer.SendMailOptions = {
+            const mailOptions: SendMailOptions = {
                 from: SMTP_FROM,
                 to: [email].filter(Boolean).join(","),
                 bcc: EMAIL_ADMIN,
