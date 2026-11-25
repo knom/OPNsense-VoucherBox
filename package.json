@@ -16,7 +16,7 @@
     "ncu:root": "ncu -u --packageFile package.json"
   },
   "devDependencies": {
-    "npm-run-all2": "^5.0.0",
+    "npm-run-all2": "^9.0.0",
     "npm-check-updates": "^23.1.0"
   }
 }
